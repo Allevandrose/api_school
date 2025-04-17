@@ -1,4 +1,3 @@
-// src/controllers/chatController.js
 const { Chat, User, File } = require('../models');
 const { Op } = require('sequelize');
 
@@ -79,6 +78,11 @@ exports.getChatHistory = async (req, res) => {
           model: User,
           as: 'sender',
           attributes: ['id', 'username', 'name', 'role']
+        },
+        {
+          model: File,
+          as: 'file',
+          attributes: ['id', 'url', 'name', 'type', 'size']
         }
       ]
     });
@@ -114,7 +118,8 @@ exports.getChatHistory = async (req, res) => {
 // Send a message to another user
 exports.sendMessage = async (req, res) => {
   try {
-    const { receiverId, message, fileId } = req.body;
+    const { receiverId, message } = req.body;
+    const fileId = req.file ? req.file.id : null; // Get file ID from upload
     const senderId = req.user.id;
     
     // Validate receiver exists
@@ -136,25 +141,30 @@ exports.sendMessage = async (req, res) => {
       fileId
     });
     
-    // Include sender info in response
-    const chatWithSender = await Chat.findByPk(newChat.id, {
+    // Include sender and file info in response
+    const chatWithDetails = await Chat.findByPk(newChat.id, {
       include: [
         {
           model: User,
           as: 'sender',
           attributes: ['id', 'username', 'name', 'role']
+        },
+        {
+          model: File,
+          as: 'file',
+          attributes: ['id', 'url', 'name', 'type', 'size']
         }
       ]
     });
     
     // If we have Socket.IO set up, emit the message
     if (req.io) {
-      req.io.to(`user_${receiverId}`).emit('new_message', chatWithSender);
+      req.io.to(`user_${receiverId}`).emit('new_message', chatWithDetails);
     }
     
     return res.status(201).json({
       message: 'Message sent successfully',
-      chat: chatWithSender
+      chat: chatWithDetails
     });
   } catch (error) {
     console.error('Send message error:', error);

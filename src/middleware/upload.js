@@ -1,4 +1,3 @@
-// src/middleware/upload.js
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -46,17 +45,25 @@ const fileFilter = (req, file, cb) => {
 // Check storage limit (100MB per user)
 const checkStorageLimit = async (req, res, next) => {
   try {
-    const user = await User.findByPk(req.user.id);
-    const fileSize = parseInt(req.headers['content-length'] || 0);
-    const maxStorageBytes = 100 * 1024 * 1024; // 100MB in bytes
+    if (!req.file) return next();
     
-    if (user.storageUsed + fileSize > maxStorageBytes) {
+    const user = await User.findByPk(req.user.id);
+    const maxStorageBytes = 100 * 1024 * 1024; // 100MB
+    
+    if (user.storageUsed + req.file.size > maxStorageBytes) {
+      fs.unlinkSync(req.file.path); // Delete uploaded file
       return res.status(400).json({ 
         message: 'Storage limit exceeded. Maximum storage is 100MB per user.' 
       });
     }
     
-    req.fileSize = fileSize;
+    // Update user's storageUsed in database
+    await User.update(
+      { storageUsed: user.storageUsed + req.file.size },
+      { where: { id: user.id } }
+    );
+    
+    req.fileSize = req.file.size;
     next();
   } catch (error) {
     console.error('Storage check error:', error);

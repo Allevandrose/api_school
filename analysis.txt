@@ -1,0 +1,91 @@
+graph TD
+    %% Core Structure
+    server.js --> app.js
+    app.js --> config/database.js
+    app.js --> config/socket.js
+    server.js --> services/chatService.js
+    server.js --> services/notificationService.js
+
+    %% Auth Flow
+    subgraph AuthFlow["Auth Flow"]
+        authRoutes.js --> authController.js
+        authController.js --> models/User.js
+        models/User.js --> middleware/auth.js
+        middleware/auth.js --> utils/constants.js
+    end
+
+    %% Chat System
+    subgraph ChatSystem["Chat System"]
+        chatRoutes.js --> chatController.js
+        chatController.js --> models/Chat.js
+        models/Chat.js --> models/File.js
+        chatController.js --> services/chatService.js
+        config/socket.js --> services/chatService.js
+    end
+
+    %% File Uploads
+    subgraph FileUploads["File Uploads"]
+        fileRoutes.js --> middleware/upload.js
+        middleware/upload.js --> models/File.js
+        fileController.js --> models/File.js
+        models/File.js --> models/Chat.js
+    end
+
+    %% Notifications
+    subgraph Notifications["Notifications"]
+        notificationRoutes.js --> notificationController.js
+        notificationController.js --> models/Notification.js
+        models/Notification.js --> models/NotificationRead.js
+        notificationController.js --> services/notificationService.js
+        config/socket.js --> services/notificationService.js
+    end
+
+    %% Question & Feedback
+    subgraph QuestionFeedback["Question & Feedback"]
+        questionRoutes.js --> questionController.js
+        questionController.js --> models/Question.js
+        models/Question.js --> models/Answer.js
+        models/Question.js --> models/Category.js
+        models/Question.js --> models/StudentResponse.js
+        models/StudentResponse.js --> models/User.js
+        models/StudentResponse.js --> models/Answer.js
+    end
+
+    %% Validation
+    subgraph Validation["Validation"]
+        utils/validators.js --> authController.js
+        utils/validators.js --> questionController.js
+        utils/validators.js --> fileController.js
+    end
+
+    %% Services
+    subgraph Services["Services"]
+        services/chatService.js --> models/Chat.js
+        services/chatService.js --> models/User.js
+        services/notificationService.js --> models/Notification.js
+    end
+
+    %% Utils
+    subgraph Utils["Utils"]
+        utils/constants.js --> middleware/upload.js
+        utils/constants.js --> models/User.js
+        utils/helpers.js --> controllers/fileController.js
+        utils/validators.js --> controllers/authController.js
+    end
+
+    %% Middleware
+    subgraph Middleware["Middleware"]
+        middleware/auth.js --> controllers/authController.js
+        middleware/roleCheck.js --> controllers/userController.js
+        middleware/upload.js --> controllers/fileController.js
+    end
+
+    %% Routes
+    subgraph Routes["Routes"]
+        routes/authRoutes.js --> controllers/authController.js
+        routes/userRoutes.js --> controllers/userController.js
+        routes/questionRoutes.js --> controllers/questionController.js
+        routes/chatRoutes.js --> controllers/chatController.js
+        routes/notificationRoutes.js --> controllers/notificationController.js
+        routes/fileRoutes.js --> controllers/fileController.js
+    end

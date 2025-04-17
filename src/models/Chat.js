@@ -1,7 +1,8 @@
-// src/models/Chat.js
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
+const File = require('./File'); // Import File model for association
 
+// Updated Chat model with proper File association
 const Chat = sequelize.define('Chat', {
   id: {
     type: DataTypes.INTEGER,
@@ -28,21 +29,13 @@ const Chat = sequelize.define('Chat', {
     type: DataTypes.TEXT,
     allowNull: false
   },
-  fileUrl: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  fileName: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  fileType: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  fileSize: {
+  fileId: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: true,
+    references: {
+      model: 'Files',
+      key: 'id'
+    }
   },
   isRead: {
     type: DataTypes.BOOLEAN,
@@ -52,6 +45,16 @@ const Chat = sequelize.define('Chat', {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
   }
+}, {
+  tableName: 'chats',
+  timestamps: false // If you want to use the `timestamp` field instead of default Sequelize timestamps
+});
+
+// Association with File model
+Chat.belongsTo(File, {
+  foreignKey: 'fileId',
+  as: 'file',
+  onDelete: 'SET NULL'
 });
 
 module.exports = Chat;
