@@ -1,4 +1,3 @@
-// src/controllers/questionController.js
 const { Question, Answer, Category, StudentResponse, User, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
@@ -56,9 +55,10 @@ exports.getAllCategories = async (req, res) => {
 
 // Admin: Create a new question with answers
 exports.createQuestion = async (req, res) => {
-  const transaction = await sequelize.transaction();
-  
+  let transaction;
   try {
+    transaction = await sequelize.transaction();
+
     const { text, categoryId, answers } = req.body;
     
     // Validate inputs
@@ -107,7 +107,7 @@ exports.createQuestion = async (req, res) => {
       }
     });
   } catch (error) {
-    await transaction.rollback();
+    if (transaction) await transaction.rollback();
     console.error('Create question error:', error);
     return res.status(500).json({ message: 'Error creating question' });
   }
@@ -205,13 +205,52 @@ exports.submitAnswers = async (req, res) => {
       }
     }
     
+    // Validate questions exist and are active
+    const questionIds = responses.map(r => r.questionId);
+    const validQuestions = await Question.findAll({
+      where: {
+        id: { [Op.in]: questionIds },
+        isActive: true
+      }
+    });
+    
+    const validQuestionIds = validQuestions.map(q => q.id);
+    const invalidQuestions = questionIds.filter(id => !validQuestionIds.includes(id));
+    
+    if (invalidQuestions.length > 0) {
+      await transaction.rollback();
+      return res.status(400).json({ 
+        message: `Some questions are invalid or inactive: ${invalidQuestions.join(', ')}` 
+      });
+    }
+    
+    // Validate answers exist and belong to questions
+    const answerValidations = await Promise.all(
+      responses.map(async response => {
+        const answer = await Answer.findOne({
+          where: {
+            id: response.answerId,
+            questionId: response.questionId
+          }
+        });
+        return answer ? null : response.questionId;
+      })
+    );
+    
+    const invalidAnswers = answerValidations.filter(id => id !== null);
+    
+    if (invalidAnswers.length > 0) {
+      await transaction.rollback();
+      return res.status(400).json({ 
+        message: `Some answers are invalid for questions: ${invalidAnswers.join(', ')}` 
+      });
+    }
+    
     // Check if student has already answered any of these questions
     const existingResponses = await StudentResponse.findAll({
       where: {
         studentId,
-        questionId: {
-          [Op.in]: responses.map(r => r.questionId)
-        }
+        questionId: { [Op.in]: questionIds }
       }
     });
     
